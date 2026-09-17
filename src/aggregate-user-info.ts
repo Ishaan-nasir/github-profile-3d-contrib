@@ -28,8 +28,34 @@ const compare = (num1: number, num2: number): number => {
     }
 };
 
+/**
+ * Narrow a flat, daily-contiguous calendar to its last `weeks` columns.
+ *
+ * The isometric grid derives each cell's column from
+ * `floor((epochDays(date) - sundayOfFirstWeek) / 7)`, so the retained
+ * window MUST begin on a Sunday; starting mid-week shears the whole
+ * lattice. Rather than trimming forward from `slice(-weeks * 7)` -- which
+ * lands on an arbitrary weekday -- anchor on the final day, step back to
+ * the Sunday that opens its (possibly partial) week, then step back whole
+ * weeks. That start index is Sunday-aligned by construction and yields
+ * exactly `weeks` columns.
+ */
+const narrowToLastWeeks = (
+    calendar: Array<type.CalendarInfo>,
+    weeks: number,
+): Array<type.CalendarInfo> => {
+    if (calendar.length === 0) {
+        return calendar;
+    }
+    const lastIndex = calendar.length - 1;
+    const sundayOfLastWeek = lastIndex - calendar[lastIndex].date.getUTCDay();
+    const start = sundayOfLastWeek - (weeks - 1) * 7;
+    return start <= 0 ? calendar : calendar.slice(start);
+};
+
 export const aggregateUserInfo = (
     response: client.ResponseType,
+    weeks: number | null = null,
 ): type.UserInfo => {
     if (!response.data) {
         if (response.errors && response.errors.length) {
@@ -49,6 +75,23 @@ export const aggregateUserInfo = (
             ),
             date: new Date(week.date),
         }));
+    const fullPeriod =
+        calendar.length === 0
+            ? null
+            : {
+                  start: calendar[0].date,
+                  end: calendar[calendar.length - 1].date,
+              };
+    const windowed =
+        weeks !== null && weeks * 7 < calendar.length
+            ? narrowToLastWeeks(calendar, weeks)
+            : calendar;
+    const windowWeeks = windowed === calendar ? null : weeks;
+    const windowContributions = windowed.reduce(
+        (sum, day) => sum + day.contributionCount,
+        0,
+    );
+
     const contributesLanguage: { [language: string]: type.LangInfo } = {};
     user.contributionsCollection.commitContributionsByRepository
         .filter((repo) => repo.repository.primaryLanguage)
@@ -81,7 +124,10 @@ export const aggregateUserInfo = (
     const userInfo: type.UserInfo = {
         isHalloween:
             user.contributionsCollection.contributionCalendar.isHalloween,
-        contributionCalendar: calendar,
+        contributionCalendar: windowed,
+        windowWeeks: windowWeeks,
+        windowContributions: windowContributions,
+        fullPeriod: fullPeriod,
         contributesLanguage: languages,
         totalContributions:
             user.contributionsCollection.contributionCalendar

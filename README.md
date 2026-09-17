@@ -98,6 +98,13 @@ In the sample, only `GITHUB_TOKEN` and `USERNAME` are specified as environment v
 - `SETTING_JSON` : (optional) settings json file path. See `sample-settings/*.json` and `src/type.ts` in `yoshi389111/github-profile-3d-contrib` repository for details. - since ver. 0.6.0
 - `GITHUB_ENDPOINT` : (optional) Github GraphQL endpoint. For example, if you want to create a contribution calendar based on your company's GitHub Enterprise activity instead of GitHub.com, set this environment variable. e.g. `https://github.mycompany.com/api/graphql` - since ver. 0.8.0
 - `YEAR` : (optional) For past calendars, specify the year. This is intended to be specified when running the tool from the command line. - since ver. 0.8.0
+- `WEEKS` : (optional) Render only the last N weeks of the calendar instead of the
+  full year. Positive integer, clamped to 53. Unset means the full period, which is
+  the default behaviour. The window always begins on a Sunday, so the grid stays
+  aligned. While narrowed, the contribution total is the sum over the window and the
+  caption names it; the radar chart, the language breakdown and the star/fork counts
+  are omitted, because they are derived from totals that carry no per-day breakdown
+  and so cannot be narrowed to match.
 
 #### About `GITHUB_TOKEN`
 

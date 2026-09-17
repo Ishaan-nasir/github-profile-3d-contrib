@@ -1,7 +1,7 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 60599:
+/***/ 75178:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -34,7 +34,28 @@ const compare = (num1, num2) => {
         return 0;
     }
 };
-const aggregateUserInfo = (response) => {
+/**
+ * Narrow a flat, daily-contiguous calendar to its last `weeks` columns.
+ *
+ * The isometric grid derives each cell's column from
+ * `floor((epochDays(date) - sundayOfFirstWeek) / 7)`, so the retained
+ * window MUST begin on a Sunday; starting mid-week shears the whole
+ * lattice. Rather than trimming forward from `slice(-weeks * 7)` -- which
+ * lands on an arbitrary weekday -- anchor on the final day, step back to
+ * the Sunday that opens its (possibly partial) week, then step back whole
+ * weeks. That start index is Sunday-aligned by construction and yields
+ * exactly `weeks` columns.
+ */
+const narrowToLastWeeks = (calendar, weeks) => {
+    if (calendar.length === 0) {
+        return calendar;
+    }
+    const lastIndex = calendar.length - 1;
+    const sundayOfLastWeek = lastIndex - calendar[lastIndex].date.getUTCDay();
+    const start = sundayOfLastWeek - (weeks - 1) * 7;
+    return start <= 0 ? calendar : calendar.slice(start);
+};
+const aggregateUserInfo = (response, weeks = null) => {
     if (!response.data) {
         if (response.errors && response.errors.length) {
             throw new Error(response.errors[0].message);
@@ -51,6 +72,17 @@ const aggregateUserInfo = (response) => {
         contributionLevel: toNumberContributionLevel(week.contributionLevel),
         date: new Date(week.date),
     }));
+    const fullPeriod = calendar.length === 0
+        ? null
+        : {
+            start: calendar[0].date,
+            end: calendar[calendar.length - 1].date,
+        };
+    const windowed = weeks !== null && weeks * 7 < calendar.length
+        ? narrowToLastWeeks(calendar, weeks)
+        : calendar;
+    const windowWeeks = windowed === calendar ? null : weeks;
+    const windowContributions = windowed.reduce((sum, day) => sum + day.contributionCount, 0);
     const contributesLanguage = {};
     user.contributionsCollection.commitContributionsByRepository
         .filter((repo) => repo.repository.primaryLanguage)
@@ -80,7 +112,10 @@ const aggregateUserInfo = (response) => {
         .reduce((num1, num2) => num1 + num2, 0);
     const userInfo = {
         isHalloween: user.contributionsCollection.contributionCalendar.isHalloween,
-        contributionCalendar: calendar,
+        contributionCalendar: windowed,
+        windowWeeks: windowWeeks,
+        windowContributions: windowContributions,
+        fullPeriod: fullPeriod,
         contributesLanguage: languages,
         totalContributions: user.contributionsCollection.contributionCalendar
             .totalContributions,
@@ -99,7 +134,7 @@ exports.aggregateUserInfo = aggregateUserInfo;
 
 /***/ }),
 
-/***/ 71107:
+/***/ 38340:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -109,29 +144,29 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.GitBlockSettings = exports.NightRainbowSettings = exports.NightGreenSettings = exports.NightViewSettings = exports.SouthSeasonSettings = exports.NorthSeasonSettings = exports.HalloweenSettings = exports.NormalSettings = void 0;
-const NormalSettings_json_1 = __importDefault(__nccwpck_require__(13277));
+const NormalSettings_json_1 = __importDefault(__nccwpck_require__(93096));
 exports.NormalSettings = NormalSettings_json_1.default;
-const HalloweenSettings_json_1 = __importDefault(__nccwpck_require__(4771));
+const HalloweenSettings_json_1 = __importDefault(__nccwpck_require__(25304));
 exports.HalloweenSettings = HalloweenSettings_json_1.default;
 // Northern hemisphere
-const NorthSeasonSettings_json_1 = __importDefault(__nccwpck_require__(26734));
+const NorthSeasonSettings_json_1 = __importDefault(__nccwpck_require__(52669));
 exports.NorthSeasonSettings = NorthSeasonSettings_json_1.default;
 // Southern hemisphere
-const SouthSeasonSettings_json_1 = __importDefault(__nccwpck_require__(83548));
+const SouthSeasonSettings_json_1 = __importDefault(__nccwpck_require__(88435));
 exports.SouthSeasonSettings = SouthSeasonSettings_json_1.default;
-const NightViewSettings_json_1 = __importDefault(__nccwpck_require__(91707));
+const NightViewSettings_json_1 = __importDefault(__nccwpck_require__(81812));
 exports.NightViewSettings = NightViewSettings_json_1.default;
-const NightGreenSettings_json_1 = __importDefault(__nccwpck_require__(86775));
+const NightGreenSettings_json_1 = __importDefault(__nccwpck_require__(26378));
 exports.NightGreenSettings = NightGreenSettings_json_1.default;
-const NightRainbowSettings_json_1 = __importDefault(__nccwpck_require__(29598));
+const NightRainbowSettings_json_1 = __importDefault(__nccwpck_require__(50631));
 exports.NightRainbowSettings = NightRainbowSettings_json_1.default;
-const GitBlockSettings_json_1 = __importDefault(__nccwpck_require__(69595));
+const GitBlockSettings_json_1 = __importDefault(__nccwpck_require__(1106));
 exports.GitBlockSettings = GitBlockSettings_json_1.default;
 //# sourceMappingURL=color-template.js.map
 
 /***/ }),
 
-/***/ 92699:
+/***/ 20810:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -162,7 +197,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.create3DContrib = exports.addDefines = void 0;
 const d3 = __importStar(__nccwpck_require__(85871));
-const util = __importStar(__nccwpck_require__(71010));
+const util = __importStar(__nccwpck_require__(5359));
 const ANGLE = 30;
 const toEpochDays = (date) => Math.floor(date.getTime() / (24 * 60 * 60 * 1000));
 const addNormalColor = (path, contribLevel, panel) => {
@@ -283,7 +318,12 @@ const create3DContrib = (svg, userInfo, x, y, width, height, settings, isForcedA
     const firstDate = userInfo.contributionCalendar[0].date;
     const sundayOfFirstWeek = toEpochDays(firstDate) - firstDate.getUTCDay();
     const weekcount = Math.ceil((userInfo.contributionCalendar.length + firstDate.getUTCDay()) / 7.0);
-    const dx = width / 64;
+    // Cells span columns `1 .. weekcount + 6` horizontally (see baseX below),
+    // so the lattice needs `weekcount + 7` columns of room; +4 keeps the
+    // original right-hand margin. At the full 53 weeks this is width / 64,
+    // identical to the previous hardcoded value -- but it now also fills the
+    // canvas when WEEKS narrows the grid.
+    const dx = width / (weekcount + 11);
     const dy = dx * Math.tan(ANGLE * ((2 * Math.PI) / 360));
     const dxx = dx * 0.9;
     const dyy = dy * 0.9;
@@ -406,7 +446,7 @@ exports.create3DContrib = create3DContrib;
 
 /***/ }),
 
-/***/ 42906:
+/***/ 6995:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -556,7 +596,7 @@ exports.createCssColors = createCssColors;
 
 /***/ }),
 
-/***/ 40855:
+/***/ 6286:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -699,7 +739,7 @@ exports.createPieLanguage = createPieLanguage;
 
 /***/ }),
 
-/***/ 81874:
+/***/ 39153:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -729,7 +769,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createRadarContrib = void 0;
-const util = __importStar(__nccwpck_require__(71010));
+const util = __importStar(__nccwpck_require__(5359));
 const rangeLabels = ['1', '10', '100', '1K', '10K'];
 const levels = rangeLabels.length;
 const radians = 2 * Math.PI;
@@ -854,7 +894,7 @@ exports.createRadarContrib = createRadarContrib;
 
 /***/ }),
 
-/***/ 63336:
+/***/ 41339:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -886,11 +926,11 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createSvg = void 0;
 const d3 = __importStar(__nccwpck_require__(85871));
 const jsdom_1 = __nccwpck_require__(81865);
-const contrib = __importStar(__nccwpck_require__(92699));
-const pie = __importStar(__nccwpck_require__(40855));
-const radar = __importStar(__nccwpck_require__(81874));
-const colors = __importStar(__nccwpck_require__(42906));
-const util = __importStar(__nccwpck_require__(71010));
+const contrib = __importStar(__nccwpck_require__(20810));
+const pie = __importStar(__nccwpck_require__(6286));
+const radar = __importStar(__nccwpck_require__(39153));
+const colors = __importStar(__nccwpck_require__(6995));
+const util = __importStar(__nccwpck_require__(5359));
 const width = 1280;
 const height = 850;
 const pieHeight = 200 * 1.3;
@@ -940,10 +980,18 @@ const createSvg = (userInfo, settings, isForcedAnimation) => {
     else {
         // 3D-Contrib Calendar
         contrib.create3DContrib(svg, userInfo, 0, 0, width, height, settings, isForcedAnimation);
-        // radar chart
-        radar.createRadarContrib(svg, userInfo, radarX, 70, radarWidth, radarHeight, settings, isForcedAnimation);
-        // pie chart
-        pie.createPieLanguage(svg, userInfo, 40, height - pieHeight - 70, pieWidth, pieHeight, settings, isForcedAnimation);
+        // The radar and the language breakdown are built from
+        // contributionsCollection totals, which carry no per-day breakdown and
+        // therefore cannot be narrowed to the WEEKS window. Rather than show
+        // them beside a shorter grid covering a different period, omit them
+        // while narrowed -- which also frees the canvas the larger cells need,
+        // since the band thickens (~12 * dy) as the grid shortens.
+        if (userInfo.windowWeeks === null) {
+            // radar chart
+            radar.createRadarContrib(svg, userInfo, radarX, 70, radarWidth, radarHeight, settings, isForcedAnimation);
+            // pie chart
+            pie.createPieLanguage(svg, userInfo, 40, height - pieHeight - 70, pieWidth, pieHeight, settings, isForcedAnimation);
+        }
         const group = svg.append('g');
         const positionXContrib = (width * 3) / 10;
         const positionYContrib = height - 20;
@@ -954,11 +1002,21 @@ const createSvg = (userInfo, settings, isForcedAnimation) => {
             .attr('x', positionXContrib)
             .attr('y', positionYContrib)
             .attr('text-anchor', 'end')
-            .text(util.inertThousandSeparator(userInfo.totalContributions))
+            .text(util.inertThousandSeparator(userInfo.windowWeeks === null
+            ? userInfo.totalContributions
+            : userInfo.windowContributions))
             .attr('class', 'fill-strong');
-        const contribLabel = settings.l10n
+        // The grid, its total and the period above all describe the same
+        // window. The radar and the language breakdown cannot: they come from
+        // contributionsCollection totals, which carry no per-day breakdown to
+        // narrow. Say so on the image rather than letting two periods sit
+        // side by side unlabelled.
+        const baseContribLabel = settings.l10n
             ? settings.l10n.contrib
             : 'contributions';
+        const contribLabel = userInfo.windowWeeks === null
+            ? baseContribLabel
+            : `${baseContribLabel} \u00b7 last ${userInfo.windowWeeks} weeks`;
         group
             .append('text')
             .style('font-size', '24px')
@@ -968,48 +1026,54 @@ const createSvg = (userInfo, settings, isForcedAnimation) => {
             .attr('text-anchor', 'start')
             .text(contribLabel)
             .attr('class', 'fill-fg');
-        const positionXStar = (width * 5) / 10;
-        const positionYStar = positionYContrib;
-        // icon of star
-        group
-            .append('g')
-            .attr('transform', `translate(${positionXStar - 32}, ${positionYStar - 28}), scale(2)`)
-            .append('path')
-            .attr('fill-rule', 'evenodd')
-            .attr('d', 'M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25zm0 2.445L6.615 5.5a.75.75 0 01-.564.41l-3.097.45 2.24 2.184a.75.75 0 01.216.664l-.528 3.084 2.769-1.456a.75.75 0 01.698 0l2.77 1.456-.53-3.084a.75.75 0 01.216-.664l2.24-2.183-3.096-.45a.75.75 0 01-.564-.41L8 2.694v.001z')
-            .attr('class', 'fill-fg');
-        group
-            .append('text')
-            .style('font-size', '32px')
-            .style('font-weight', 'bold')
-            .attr('x', positionXStar + 10)
-            .attr('y', positionYStar)
-            .attr('text-anchor', 'start')
-            .text(util.toScale(userInfo.totalStargazerCount))
-            .attr('class', 'fill-fg')
-            .append('title')
-            .text(userInfo.totalStargazerCount);
-        const positionXFork = (width * 6) / 10;
-        const positionYFork = positionYContrib;
-        // icon of fork
-        group
-            .append('g')
-            .attr('transform', `translate(${positionXFork - 32}, ${positionYFork - 28}), scale(2)`)
-            .append('path')
-            .attr('fill-rule', 'evenodd')
-            .attr('d', 'M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z')
-            .attr('class', 'fill-fg');
-        group
-            .append('text')
-            .style('font-size', '32px')
-            .style('font-weight', 'bold')
-            .attr('x', positionXFork + 4)
-            .attr('y', positionYFork)
-            .attr('text-anchor', 'start')
-            .text(util.toScale(userInfo.totalForkCount))
-            .attr('class', 'fill-fg')
-            .append('title')
-            .text(userInfo.totalForkCount);
+        // Star and fork counts are repo-wide, all-time totals with no period
+        // at all. Beside a narrowed grid they invite the same misreading as
+        // the radar, and the longer caption would run through them, so they
+        // follow the same rule.
+        if (userInfo.windowWeeks === null) {
+            const positionXStar = (width * 5) / 10;
+            const positionYStar = positionYContrib;
+            // icon of star
+            group
+                .append('g')
+                .attr('transform', `translate(${positionXStar - 32}, ${positionYStar - 28}), scale(2)`)
+                .append('path')
+                .attr('fill-rule', 'evenodd')
+                .attr('d', 'M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25zm0 2.445L6.615 5.5a.75.75 0 01-.564.41l-3.097.45 2.24 2.184a.75.75 0 01.216.664l-.528 3.084 2.769-1.456a.75.75 0 01.698 0l2.77 1.456-.53-3.084a.75.75 0 01.216-.664l2.24-2.183-3.096-.45a.75.75 0 01-.564-.41L8 2.694v.001z')
+                .attr('class', 'fill-fg');
+            group
+                .append('text')
+                .style('font-size', '32px')
+                .style('font-weight', 'bold')
+                .attr('x', positionXStar + 10)
+                .attr('y', positionYStar)
+                .attr('text-anchor', 'start')
+                .text(util.toScale(userInfo.totalStargazerCount))
+                .attr('class', 'fill-fg')
+                .append('title')
+                .text(userInfo.totalStargazerCount);
+            const positionXFork = (width * 6) / 10;
+            const positionYFork = positionYContrib;
+            // icon of fork
+            group
+                .append('g')
+                .attr('transform', `translate(${positionXFork - 32}, ${positionYFork - 28}), scale(2)`)
+                .append('path')
+                .attr('fill-rule', 'evenodd')
+                .attr('d', 'M5 3.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm0 2.122a2.25 2.25 0 10-1.5 0v.878A2.25 2.25 0 005.75 8.5h1.5v2.128a2.251 2.251 0 101.5 0V8.5h1.5a2.25 2.25 0 002.25-2.25v-.878a2.25 2.25 0 10-1.5 0v.878a.75.75 0 01-.75.75h-4.5A.75.75 0 015 6.25v-.878zm3.75 7.378a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm3-8.75a.75.75 0 100-1.5.75.75 0 000 1.5z')
+                .attr('class', 'fill-fg');
+            group
+                .append('text')
+                .style('font-size', '32px')
+                .style('font-weight', 'bold')
+                .attr('x', positionXFork + 4)
+                .attr('y', positionYFork)
+                .attr('text-anchor', 'start')
+                .text(util.toScale(userInfo.totalForkCount))
+                .attr('class', 'fill-fg')
+                .append('title')
+                .text(userInfo.totalForkCount);
+        }
         // ISO 8601 format
         const startDate = userInfo.contributionCalendar[0].date;
         const endDate = userInfo.contributionCalendar[userInfo.contributionCalendar.length - 1].date;
@@ -1031,7 +1095,7 @@ exports.createSvg = createSvg;
 
 /***/ }),
 
-/***/ 46045:
+/***/ 82464:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -1049,7 +1113,7 @@ exports.writeFile = writeFile;
 
 /***/ }),
 
-/***/ 54652:
+/***/ 21747:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -1182,7 +1246,7 @@ exports.fetchData = fetchData;
 
 /***/ }),
 
-/***/ 49687:
+/***/ 52286:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -1212,12 +1276,14 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.main = void 0;
-const aggregate = __importStar(__nccwpck_require__(60599));
-const template = __importStar(__nccwpck_require__(71107));
-const create = __importStar(__nccwpck_require__(63336));
-const f = __importStar(__nccwpck_require__(46045));
-const r = __importStar(__nccwpck_require__(11820));
-const client = __importStar(__nccwpck_require__(54652));
+const aggregate = __importStar(__nccwpck_require__(75178));
+const template = __importStar(__nccwpck_require__(38340));
+const create = __importStar(__nccwpck_require__(41339));
+const f = __importStar(__nccwpck_require__(82464));
+const r = __importStar(__nccwpck_require__(51649));
+const client = __importStar(__nccwpck_require__(21747));
+/** A contribution year spans at most 53 Sunday-aligned columns. */
+const MAX_WEEKS = 53;
 const main = async () => {
     try {
         const token = process.env.GITHUB_TOKEN;
@@ -1246,8 +1312,19 @@ const main = async () => {
             process.exitCode = 1;
             return;
         }
+        // Optional. Unset -> the whole queried period, i.e. previous behaviour.
+        let weeks = null;
+        if (process.env.WEEKS) {
+            const requested = Number(process.env.WEEKS);
+            if (!Number.isInteger(requested) || requested < 1) {
+                console.error('WEEKS must be a positive integer');
+                process.exitCode = 1;
+                return;
+            }
+            weeks = Math.min(requested, MAX_WEEKS);
+        }
         const response = await client.fetchData(token, userName, maxRepos, year);
-        const userInfo = aggregate.aggregateUserInfo(response);
+        const userInfo = aggregate.aggregateUserInfo(response, weeks);
         if (process.env.SETTING_JSON) {
             const settingFile = r.readSettingJson(process.env.SETTING_JSON);
             const settingInfos = 'length' in settingFile ? settingFile : [settingFile];
@@ -1285,7 +1362,7 @@ void (0, exports.main)();
 
 /***/ }),
 
-/***/ 11820:
+/***/ 51649:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -1305,7 +1382,7 @@ exports.readSettingJson = readSettingJson;
 
 /***/ }),
 
-/***/ 71010:
+/***/ 5359:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -190359,7 +190436,7 @@ function defaultConstrain(transform, extent, translateExtent) {
 
 /***/ }),
 
-/***/ 69595:
+/***/ 1106:
 /***/ ((module) => {
 
 "use strict";
@@ -190367,7 +190444,7 @@ module.exports = /*#__PURE__*/JSON.parse('{"type":"bitmap","backgroundColor":"#f
 
 /***/ }),
 
-/***/ 4771:
+/***/ 25304:
 /***/ ((module) => {
 
 "use strict";
@@ -190375,7 +190452,7 @@ module.exports = /*#__PURE__*/JSON.parse('{"type":"normal","backgroundColor":"#f
 
 /***/ }),
 
-/***/ 86775:
+/***/ 26378:
 /***/ ((module) => {
 
 "use strict";
@@ -190383,7 +190460,7 @@ module.exports = /*#__PURE__*/JSON.parse('{"type":"normal","backgroundColor":"#0
 
 /***/ }),
 
-/***/ 29598:
+/***/ 50631:
 /***/ ((module) => {
 
 "use strict";
@@ -190391,7 +190468,7 @@ module.exports = /*#__PURE__*/JSON.parse('{"type":"rainbow","backgroundColor":"#
 
 /***/ }),
 
-/***/ 91707:
+/***/ 81812:
 /***/ ((module) => {
 
 "use strict";
@@ -190399,7 +190476,7 @@ module.exports = /*#__PURE__*/JSON.parse('{"type":"normal","backgroundColor":"#0
 
 /***/ }),
 
-/***/ 13277:
+/***/ 93096:
 /***/ ((module) => {
 
 "use strict";
@@ -190407,7 +190484,7 @@ module.exports = /*#__PURE__*/JSON.parse('{"type":"normal","backgroundColor":"#f
 
 /***/ }),
 
-/***/ 26734:
+/***/ 52669:
 /***/ ((module) => {
 
 "use strict";
@@ -190415,7 +190492,7 @@ module.exports = /*#__PURE__*/JSON.parse('{"type":"season","backgroundColor":"#f
 
 /***/ }),
 
-/***/ 83548:
+/***/ 88435:
 /***/ ((module) => {
 
 "use strict";
@@ -190605,7 +190682,7 @@ module.exports = /*#__PURE__*/JSON.parse('["UTF-8","IBM866","ISO-8859-2","ISO-88
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
 /******/ 	// This entry module is referenced by other modules so it can't be inlined
-/******/ 	var __webpack_exports__ = __nccwpck_require__(49687);
+/******/ 	var __webpack_exports__ = __nccwpck_require__(52286);
 /******/ 	module.exports = __webpack_exports__;
 /******/ 	
 /******/ })()

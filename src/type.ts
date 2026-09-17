@@ -13,6 +13,22 @@ export interface LangInfo {
 export interface UserInfo {
     isHalloween: boolean;
     contributionCalendar: Array<CalendarInfo>;
+    /**
+     * Number of weeks the calendar was narrowed to via the WEEKS env var,
+     * or null when the full queried period is shown.
+     */
+    windowWeeks: number | null;
+    /**
+     * Contributions falling inside `contributionCalendar` after narrowing.
+     * Equal to `totalContributions` when `windowWeeks` is null.
+     */
+    windowContributions: number;
+    /**
+     * The full queried period, which is what the radar chart and the
+     * language breakdown always describe -- those come from
+     * contributionsCollection totals and cannot be narrowed.
+     */
+    fullPeriod: { start: Date; end: Date } | null;
     contributesLanguage: Array<LangInfo>;
     totalContributions: number;
     totalCommitContributions: number;

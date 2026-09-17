@@ -5,6 +5,9 @@ import * as f from './file-writer';
 import * as r from './settings-reader';
 import * as client from './github-graphql';
 
+/** A contribution year spans at most 53 Sunday-aligned columns. */
+const MAX_WEEKS = 53;
+
 export const main = async (): Promise<void> => {
     try {
         const token = process.env.GITHUB_TOKEN;
@@ -34,6 +37,17 @@ export const main = async (): Promise<void> => {
             process.exitCode = 1;
             return;
         }
+        // Optional. Unset -> the whole queried period, i.e. previous behaviour.
+        let weeks: number | null = null;
+        if (process.env.WEEKS) {
+            const requested = Number(process.env.WEEKS);
+            if (!Number.isInteger(requested) || requested < 1) {
+                console.error('WEEKS must be a positive integer');
+                process.exitCode = 1;
+                return;
+            }
+            weeks = Math.min(requested, MAX_WEEKS);
+        }
 
         const response = await client.fetchData(
             token,
@@ -41,7 +55,7 @@ export const main = async (): Promise<void> => {
             maxRepos,
             year,
         );
-        const userInfo = aggregate.aggregateUserInfo(response);
+        const userInfo = aggregate.aggregateUserInfo(response, weeks);
 
         if (process.env.SETTING_JSON) {
             const settingFile = r.readSettingJson(process.env.SETTING_JSON);

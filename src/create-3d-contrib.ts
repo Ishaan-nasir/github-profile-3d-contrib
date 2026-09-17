@@ -182,7 +182,12 @@ export const create3DContrib = (
     const weekcount = Math.ceil(
         (userInfo.contributionCalendar.length + firstDate.getUTCDay()) / 7.0,
     );
-    const dx = width / 64;
+    // Cells span columns `1 .. weekcount + 6` horizontally (see baseX below),
+    // so the lattice needs `weekcount + 7` columns of room; +4 keeps the
+    // original right-hand margin. At the full 53 weeks this is width / 64,
+    // identical to the previous hardcoded value -- but it now also fills the
+    // canvas when WEEKS narrows the grid.
+    const dx = width / (weekcount + 11);
     const dy = dx * Math.tan(ANGLE * ((2 * Math.PI) / 360));
     const dxx = dx * 0.9;
     const dyy = dy * 0.9;
