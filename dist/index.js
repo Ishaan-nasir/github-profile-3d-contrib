@@ -986,7 +986,7 @@ const createSvg = (userInfo, settings, isForcedAnimation) => {
         // them beside a shorter grid covering a different period, omit them
         // while narrowed -- which also frees the canvas the larger cells need,
         // since the band thickens (~12 * dy) as the grid shortens.
-        if (userInfo.windowWeeks === null) {
+        if (userInfo.windowWeeks === null || process.env.WINDOW_STATS === 'true') {
             // radar chart
             radar.createRadarContrib(svg, userInfo, radarX, 70, radarWidth, radarHeight, settings, isForcedAnimation);
             // pie chart
