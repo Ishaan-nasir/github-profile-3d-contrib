@@ -187,12 +187,20 @@ export const create3DContrib = (
     // original right-hand margin. At the full 53 weeks this is width / 64,
     // identical to the previous hardcoded value -- but it now also fills the
     // canvas when WEEKS narrows the grid.
-    const dx = width / (weekcount + 11);
+    // With WINDOW_STATS the radar and the language donut stay on the canvas,
+    // so a narrowed grid keeps a fixed, smaller scale and is centred between
+    // them instead of growing to fill the width.
+    const keepStats = process.env.WINDOW_STATS === 'true' && weekcount < 53;
+    const dx = keepStats
+        ? (width / 64) * Number(process.env.WINDOW_SCALE || 1.5)
+        : width / (weekcount + 11);
     const dy = dx * Math.tan(ANGLE * ((2 * Math.PI) / 360));
     const dxx = dx * 0.9;
     const dyy = dy * 0.9;
 
-    const offsetX = dx * 7;
+    const offsetX = keepStats
+        ? width * Number(process.env.WINDOW_CENTER || 0.52) - ((weekcount + 6) * dx) / 2 + dx * 6
+        : dx * 7;
     const offsetY = height - (weekcount + 7) * dy;
 
     const group = svg.append('g');
